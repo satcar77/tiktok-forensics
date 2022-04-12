@@ -1,53 +1,78 @@
-from PyQt5 import QtCore, QtGui, QtWidgets
-from PyQt5.QtWidgets import QApplication
 import sys
-import ui
-import main as driver
+import driver
+from PyQt5 import uic
+import os
+import devices
+from PyQt5.QtWidgets import (
+    QApplication,
+    QFileDialog,
+    QMainWindow
+)
 
 
-class TikTokForensicAnalyzer(QtWidgets.QMainWindow, ui.Ui_MainWindow):
+TIKTOK_PACKAGE_NAME = 'com.zhiliaoapp.musically'
+
+class TikTokForensicAnalyzer(QMainWindow):
     def __init__(self, parent=None):
         super(TikTokForensicAnalyzer, self).__init__(parent)
-        self.setupUi(self)
+        uic.loadUi("ui/tiktok_forensic_analyzer.ui", self)
+        self.setWindowTitle("Tiktok forensics analyzer")
+        self.connectSignalToSlots()
+        self.dir = '../data' #default directory   
+
+    def connectSignalToSlots(self):
+        self.folderSelectionButton.clicked.connect(self.setCacheDirectory)
+        self.generateInfoButton.clicked.connect(self.display_information)
+        self.downloaderAction.triggered.connect(self.showDownlader)
+
+    def format_dictionary(self,dictionary):
+        text = "\n".join("{}\t{}".format(key, value) for key, value in dictionary.items())
+        return text
+
+    def showDownlader(self):
+        dialog  = devices.DeviceDialog("Import cache",self)
+        dialog.show()
+
+    def setCacheDirectory(self):
+        dlg = QFileDialog()
+        dlg.setFileMode(QFileDialog.Directory)
+        
+        if dlg.exec_():
+            filenames = dlg.selectedFiles()
+            if len(filenames) > 0 :
+                self.dir = filenames[0]
+                
+
+    def format_list_of_dictionaries(self,list):
+        item_list = []
+        for dictionary in list:
+            for key, value in dictionary.items():
+                item_list.append("{}: {}".format(key, value))
+        text = "\n".join(item for item in item_list)
+        return text
 
 
-def format_dictionary(dictionary):
-    text = "\n".join("{}\t{}".format(key, value) for key, value in dictionary.items())
-    return text
-
-
-def format_list_of_dictionaries(list):
-    item_list = []
-    for dictionary in list:
-        for key, value in dictionary.items():
-            item_list.append("{}: {}".format(key, value))
-    text = "\n".join(item for item in item_list)
-    return text
-
-
-def display_information(form):
-    module = driver.ForensicsModule('../data')
-    action = form.comboBox.currentText()
-    if action == "User Profile":
-        text = format_dictionary(module.get_user_profile())
-    elif action == "Messages":
-        text = format_list_of_dictionaries(module.get_user_messages())
-    elif action == "Last User Session":
-        text = format_list_of_dictionaries(module.get_last_session())
-    elif action == "Published Videos":
-        text = format_list_of_dictionaries(module.get_videos_publish())
-    form.textEdit.setText(text)
-
-
-def click_button(form):
-    form.pushButton.clicked.connect(lambda: display_information(form))
-
+    def display_information(self):
+        module = driver.ForensicsModule(os.path.join(self.dir,TIKTOK_PACKAGE_NAME))
+        action = self.categoryComboBox.currentIndex()
+        text = ""
+        try : 
+            if action == 0 :
+                text = self.format_dictionary(module.get_user_profile())
+            elif action == 1:
+                text = self.format_list_of_dictionaries(module.get_user_messages())
+            elif action == 2:
+                text = self.format_list_of_dictionaries(module.get_last_session())
+            elif action == 3:
+                text = self.format_list_of_dictionaries(module.get_videos_publish())
+        except Exception as e:
+            text = str(e)
+        self.textEdit.setText(text)
 
 def main():
     app = QApplication(sys.argv)
-    form = TikTokForensicAnalyzer()
-    click_button(form)
-    form.show()
+    view = TikTokForensicAnalyzer()
+    view.show()
     sys.exit(app.exec_())
 
 

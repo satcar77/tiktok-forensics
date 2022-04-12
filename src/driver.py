@@ -4,6 +4,7 @@ import json
 import xml.etree.ElementTree as ET 
 import sqlite3
 logging.basicConfig(level = logging.INFO)
+
 class ForensicsModule:     
 
     def __init__(self, cache_path) :
@@ -37,6 +38,7 @@ class ForensicsModule:
             self.timeline.append((user_profile["register_time"],"user", timeline_event))
             
             return user_profile
+
     #incomplete 
     # def get_user_searches(self):
     #     logging.info("Getting User Search History...")
@@ -53,6 +55,8 @@ class ForensicsModule:
 
     #     logging.info("{} search entrys found".format(len(searches)))
     #     return searches
+
+
 
     def get_videos_publish(self):
         logging.info("Getting published videos")
@@ -78,6 +82,18 @@ class ForensicsModule:
     
         logging.info("{} video(s) found".format(len(videos)))
         return videos
+
+    def get_user_uniqueid_by_id(self, uid):
+        db = os.path.join(self.cache_path, "databases", "db_im_xx")
+        connection = sqlite3.connect(db)
+        cursor = connection.cursor()
+        name = cursor.execute("select UNIQUE_ID from SIMPLE_USER where uid={}".format(uid))
+        if name:
+            name = list(name)[0][0]
+        else:
+            name = None
+        connection.close()
+        return name
     
     def get_last_session(self):
         logging.info("Getting last session...")
@@ -149,7 +165,7 @@ class ForensicsModule:
             conversation_output["participant_2"] = self.get_user_uniqueid_by_id(id2)
             conversation_output["messages"] = []
             
-            messages_list = database.execute_query("select created_time/1000 as created_time, content as message, case when read_status = 0 then 'Not read' when read_status = 1 then 'Read' else read_status end read_not_read, local_info, type, case when deleted = 0 then 'Not deleted' when deleted = 1 then 'Deleted' else deleted end, sender from msg where conversation_id='{}' order by created_time;".format(conversation[0]))
+            messages_list = database.execute("select created_time/1000 as created_time, content as message, case when read_status = 0 then 'Not read' when read_status = 1 then 'Read' else read_status end read_not_read, local_info, type, case when deleted = 0 then 'Not deleted' when deleted = 1 then 'Deleted' else deleted end, sender from msg where conversation_id='{}' order by created_time;".format(conversation[0]))
             
             for entry in messages_list:
                 message={}
@@ -198,12 +214,3 @@ class ForensicsModule:
 
         return conversations_list
 
-module = ForensicsModule('../data')
-profile = module.get_user_profile()
-# print(profile)
-videos = module.get_videos_publish()
-# print(videos)
-session = module.get_last_session()
-print(session)
-conversation = module.get_user_messages()
-print(conversation)
